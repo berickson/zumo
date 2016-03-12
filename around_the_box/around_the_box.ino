@@ -64,11 +64,10 @@ void show_proximity_on_lcd() {
     lcd.clear();
     lcd.print(standardized_degrees(turn_degrees));
     lcd.gotoXY(0,1);
-    lcd.print(turn_degrees_per_second);
-    //lcd.print(counts_left);
-    //lcd.print(proximity_sensors.countsLeftWithLeftLeds());
-    //lcd.print(",");
-    //lcd.print(proximity_sensors.countsLeftWithRightLeds());
+    //lcd.print(turn_degrees_per_second);
+    lcd.print(proximity_sensors.countsRightWithLeftLeds());
+    lcd.print(",");
+    lcd.print(proximity_sensors.countsRightWithRightLeds());
 }
 
 
@@ -83,14 +82,14 @@ bool turn_to_angle(float desired_degrees) {
   double turn_error = standardized_degrees(desired_degrees - turn_degrees);
   lcd.clear();
   lcd.print(turn_error);
-  int32_t motor_speed = turn_error * 30;// - turn_degrees_per_second;
+  int32_t motor_speed = turn_error * 30 - turn_degrees_per_second*0.5;
 
   // Constrain our motor speeds to be between
   // -maxSpeed and maxSpeed.
   motor_speed= constrain(motor_speed, -max_speed, max_speed);
 
   motors.setSpeeds(-motor_speed, motor_speed);
-  if(abs(turn_error)<0.1 && turnRate < 5) {
+  if(abs(turn_error)<0.3 && turnRate < 5) {
     return true;
   }
   return false;
@@ -101,7 +100,9 @@ void loop()
 {
   static int16_t goal_encoder_count = 0;
   static unsigned int last_loop_ms = 0;
-  static int current_step = 2;
+  static int current_step = 0;
+  static bool box_to_right = false;
+  static int go_angle = 0;
 
   // update loop timers
   unsigned int loop_ms = millis();
@@ -126,41 +127,53 @@ void loop()
     goal_encoder_count += 300;
   }
 
+
+  int last_box_to_right = box_to_right;
+  if (proximity_sensors.countsRightWithRightLeds() >= 3)
+    box_to_right++;
+  else
+    box_to_right = 0;
+
   // main state logic
   switch(current_step) {
     case 0:
       lcd.clear();
       lcd.print("step 1");
+      ++current_step;
+      lcd.clear();
+      lcd.print((String)"step "+current_step);
+      break;
     case 1:
+    case 3:
+    case 5:
+    case 7:
+    case 9:
       go_forward();
-      if (proximity_sensors.countsRightWithRightLeds() < 5) {
+      if (last_box_to_right && !box_to_right) {
+        go_angle -= 90;
+        go_angle = standardized_degrees(go_angle);
+        ++current_step;
         lcd.clear();
-        lcd.print("step 2");
-        current_step = 2;
+        lcd.print((String)"step "+current_step);
       }
       break;
     case 2:
-      if (turn_to_angle(-90)) {
-        lcd.clear();
-        lcd.print("step 3");
-        current_step = 4;
-      }
-      break;
-    case 3:
-      go_forward();
-      if (proximity_sensors.countsRightWithRightLeds() < 5) {
-        lcd.clear();
-        lcd.print("step 4");
-        current_step = 4;
-      }
-      break;
     case 4:
+    case 6:
+    case 8:
+      if (turn_to_angle(go_angle)) {
+        ++current_step;
+        lcd.clear();
+        lcd.print((String)"step "+current_step);
+      }
+      break;
+    case 10:
       motors.setSpeeds(0,0);
       lcd.clear();
       lcd.print("Done");
-      current_step = 5;
+      current_step++;
       break;
-    case 5: // final state, do nothing
+    default: // final state, do nothing
       break;
    
   }
