@@ -115,8 +115,9 @@ void loop()
   // main state logic
   switch(current_step) {
     case 0:
+      turnSensorReset();
+      go_angle = 0;
       lcd.clear();
-      lcd.print("step 1");
       ++current_step;
       lcd.clear();
       lcd.print((String)"step "+current_step);
@@ -149,7 +150,15 @@ void loop()
       motors.setSpeeds(0,0);
       lcd.clear();
       lcd.print("Done");
+      lcd.gotoXY(0,1);
+      lcd.print("a replay");
       current_step++;
+      break;
+    case 11:
+      if(buttonA.getSingleDebouncedRelease()) {
+        current_step = 0;
+      }
+        
       break;
     default: // final state, do nothing
       break;
