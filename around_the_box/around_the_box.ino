@@ -26,11 +26,15 @@ it down facing in a new position. */
 // This is the maximum speed the motors will be allowed to turn.
 // A maxSpeed of 400 lets the motors go at top speed.  Decrease
 // this value to impose a speed limit.
-const int16_t maxSpeed = 400;
+const int16_t max_speed = 100;
 
 Zumo32U4LCD lcd;
 Zumo32U4ButtonA buttonA;
+Zumo32U4ButtonC buttonC;
 Zumo32U4Motors motors;
+Zumo32U4Encoders encoders;
+Zumo32U4ProximitySensors proximity_sensors;
+
 L3G gyro;
 
 int start_millis;
@@ -39,33 +43,129 @@ void setup()
   turnSensorSetup();
   delay(500);
   turnSensorReset();
-
-  lcd.clear();
-  lcd.print(F("Try to"));
-  lcd.gotoXY(0, 1);
-  lcd.print(F("turn me!"));
+  proximity_sensors.initThreeSensors();
+  lcd.print(readBatteryMillivolts());
   start_millis = millis();
+}
+
+
+
+// returns true if loop time passes through n ms boundary
+bool every_n_ms(unsigned long last_loop_ms, unsigned long loop_ms, unsigned long ms) {
+  return (last_loop_ms % ms) + (loop_ms - last_loop_ms) >= ms;
+}
+
+// returns theta in [-180,180)
+double standardized_degrees(double theta) {
+  return fmod((theta + 180 + 360), 360.) - 180.;
+}
+
+void show_proximity_on_lcd() {
+    lcd.clear();
+    lcd.print(standardized_degrees(turn_degrees));
+    lcd.gotoXY(0,1);
+    lcd.print(turn_degrees_per_second);
+    //lcd.print(counts_left);
+    //lcd.print(proximity_sensors.countsLeftWithLeftLeds());
+    //lcd.print(",");
+    //lcd.print(proximity_sensors.countsLeftWithRightLeds());
+}
+
+
+void go_forward() {
+  motors.setSpeeds(max_speed , max_speed);
+}
+
+// turns toward desired angle, returns true when done
+bool turn_to_angle(float desired_degrees) {
+  const int max_speed = 200;
+
+  double turn_error = standardized_degrees(desired_degrees - turn_degrees);
+  lcd.clear();
+  lcd.print(turn_error);
+  int32_t motor_speed = turn_error * 30;// - turn_degrees_per_second;
+
+  // Constrain our motor speeds to be between
+  // -maxSpeed and maxSpeed.
+  motor_speed= constrain(motor_speed, -max_speed, max_speed);
+
+  motors.setSpeeds(-motor_speed, motor_speed);
+  if(abs(turn_error)<0.1 && turnRate < 5) {
+    return true;
+  }
+  return false;
+  
 }
 
 void loop()
 {
-  int clock_seconds= ((millis()-start_millis)/1000)%60;
-  int clock_angle = -clock_seconds*360/60 * 1;
-  
-  // Read the gyro to update turnAngle, the estimation of how far
-  // the robot has turned, and turnRate, the estimation of how
-  // fast it is turning.
+  static int16_t goal_encoder_count = 0;
+  static unsigned int last_loop_ms = 0;
+  static int current_step = 2;
+
+  // update loop timers
+  unsigned int loop_ms = millis();
+  bool every_1_s = every_n_ms(last_loop_ms, loop_ms, 1000);
+  bool every_100_ms = every_n_ms(last_loop_ms, loop_ms, 100);
+
+  // update all sensors
   turnSensorUpdate();
+  int16_t counts_left = encoders.getCountsLeft();
+  int16_t counts_right = encoders.getCountsRight();
+  bool proximity_left_active = proximity_sensors.readBasicLeft();
+  bool proximity_front_active = proximity_sensors.readBasicFront();
+  bool proximity_right_active = proximity_sensors.readBasicRight();
+  proximity_sensors.read();
 
-  // Calculate the motor turn speed using proportional and
-  // derivative PID terms.  Here we are a using a proportional
-  // constant of 56 and a derivative constant of 1/20.
-  int32_t turnSpeed = (clock_angle*turnAngle1-(int32_t)turnAngle) / (turnAngle1 / 56)
-    - turnRate / 20;
+  
+  if(every_100_ms)  {
+    show_proximity_on_lcd();
+  }
 
-  // Constrain our motor speeds to be between
-  // -maxSpeed and maxSpeed.
-  turnSpeed = constrain(turnSpeed, -maxSpeed, maxSpeed);
+  if(every_1_s)  {
+    goal_encoder_count += 300;
+  }
 
-  motors.setSpeeds(-turnSpeed, turnSpeed);
+  // main state logic
+  switch(current_step) {
+    case 0:
+      lcd.clear();
+      lcd.print("step 1");
+    case 1:
+      go_forward();
+      if (proximity_sensors.countsRightWithRightLeds() < 5) {
+        lcd.clear();
+        lcd.print("step 2");
+        current_step = 2;
+      }
+      break;
+    case 2:
+      if (turn_to_angle(-90)) {
+        lcd.clear();
+        lcd.print("step 3");
+        current_step = 4;
+      }
+      break;
+    case 3:
+      go_forward();
+      if (proximity_sensors.countsRightWithRightLeds() < 5) {
+        lcd.clear();
+        lcd.print("step 4");
+        current_step = 4;
+      }
+      break;
+    case 4:
+      motors.setSpeeds(0,0);
+      lcd.clear();
+      lcd.print("Done");
+      current_step = 5;
+      break;
+    case 5: // final state, do nothing
+      break;
+   
+  }
+
+
+  // remember last loop time
+  last_loop_ms = loop_ms;
 }

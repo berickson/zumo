@@ -60,37 +60,61 @@ void turnSensorSetup()
   // Turn on the yellow LED in case the LCD is not available.
   ledYellow(1);
 
-  // Delay to give the user time to remove their finger.
-  delay(1000);
 
-  // Calibrate the gyro.
-  int32_t total = 0;
-  for (uint16_t i = 0; i < 1024; i++)
-  {
-    // Wait for new data to be available, then read it.
-    while(!gyro.readReg(L3G::STATUS_REG) & 0x08);
-    gyro.read();
+  bool calibration_complete = false;
+  while(!calibration_complete) {
+    // Delay to give the user time to remove their finger.
+    lcd.clear();
+    lcd.print("hold on");
+    delay(3000);
+    lcd.clear();
+    lcd.print("calibrating");
 
-    // Add the Z axis reading to the total.
-    total += gyro.g.z;
-    delay(10);
+    // Calibrate the gyro.
+    int32_t total = 0;
+    const int calibration_sample_count = 1024;
+    for (uint16_t i = 0; i < calibration_sample_count; i++)
+    {
+      // Wait for new data to be available, then read it.
+      while(!gyro.readReg(L3G::STATUS_REG) & 0x08);
+      gyro.read();
+      // Add the Z axis reading to the total.
+      total += gyro.g.z;
+    }
+    gyroOffset = (total+(calibration_sample_count / 2))/ calibration_sample_count;
+    lcd.clear();
+    lcd.print(total);
+    lcd.gotoXY(0,1);
+    lcd.print(gyroOffset);
+    delay(3000);
+    ledYellow(0);
+  
+    // Display the angle (in degrees from -180 to 180) until the
+    // user presses A.
+    lcd.clear();
+    turnSensorReset();
+    while (1)
+    {
+      turnSensorUpdate();
+      lcd.gotoXY(0, 0);
+      lcd.print(turn_degrees);
+      lcd.print(F("   "));
+      lcd.gotoXY(0, 1);
+      lcd.print("A go C no");
+      if (buttonA.getSingleDebouncedRelease()) {
+        calibration_complete = true;
+        break;
+      }
+      if (buttonC.getSingleDebouncedRelease()) {
+        break;
+      }
+    }
   }
-  ledYellow(0);
-  gyroOffset = total / 1024;
-
-  // Display the angle (in degrees from -180 to 180) until the
-  // user presses A.
   lcd.clear();
-  turnSensorReset();
-  while (!buttonA.getSingleDebouncedRelease())
-  {
-    turnSensorUpdate();
-    lcd.gotoXY(0, 0);
-    lcd.print((((int32_t)turnAngle >> 16) * 360) >> 16);
-    lcd.print(F("   "));
-  }
-  lcd.clear();
+  lcd.print("starting");
+  delay(2000);
 }
+
 
 // This should be called to set the starting point for measuring
 // a turn.  After calling this, turnAngle will be 0.
@@ -104,6 +128,8 @@ void turnSensorReset()
 // frequently as possible while using the gyro to do turns.
 void turnSensorUpdate()
 {
+  // don't do anything if there is no data
+  if(!gyro.readReg(L3G::STATUS_REG) & 0x08) return;
   // Read the measurements from the gyro.
   gyro.read();
   turnRate = gyro.g.z - gyroOffset;
