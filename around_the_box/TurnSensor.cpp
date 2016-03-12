@@ -57,17 +57,14 @@ void turnSensorSetup()
   lcd.clear();
   lcd.print(F("Gyro cal"));
 
-  // Turn on the yellow LED in case the LCD is not available.
-  ledYellow(1);
-
 
   bool calibration_complete = false;
   while(!calibration_complete) {
     // Delay to give the user time to remove their finger.
     lcd.clear();
-    lcd.print("hold on");
-    delay(3000);
-    lcd.clear();
+    lcd.print("sit still");
+    delay(1000);
+    lcd.gotoXY(0,1);
     lcd.print("calibrating");
 
     // Calibrate the gyro.
@@ -82,12 +79,6 @@ void turnSensorSetup()
       total += gyro.g.z;
     }
     gyroOffset = (total+(calibration_sample_count / 2))/ calibration_sample_count;
-    lcd.clear();
-    lcd.print(total);
-    lcd.gotoXY(0,1);
-    lcd.print(gyroOffset);
-    delay(3000);
-    ledYellow(0);
   
     // Display the angle (in degrees from -180 to 180) until the
     // user presses A.
@@ -112,7 +103,7 @@ void turnSensorSetup()
   }
   lcd.clear();
   lcd.print("starting");
-  delay(2000);
+  delay(500);
 }
 
 
