@@ -26,7 +26,7 @@ it down facing in a new position. */
 // This is the maximum speed the motors will be allowed to turn.
 // A maxSpeed of 400 lets the motors go at top speed.  Decrease
 // this value to impose a speed limit.
-const int16_t max_speed = 100;
+const int16_t max_speed = 400;
 
 Zumo32U4LCD lcd;
 Zumo32U4ButtonA buttonA;
@@ -77,19 +77,18 @@ void go_forward() {
 
 // turns toward desired angle, returns true when done
 bool turn_to_angle(float desired_degrees) {
-  const int max_speed = 200;
 
   double turn_error = standardized_degrees(desired_degrees - turn_degrees);
   lcd.clear();
   lcd.print(turn_error);
-  int32_t motor_speed = turn_error * 30 - turn_degrees_per_second*0.5;
+  int32_t motor_speed = turn_error * 20 - turn_degrees_per_second*0.5;
 
   // Constrain our motor speeds to be between
   // -maxSpeed and maxSpeed.
   motor_speed= constrain(motor_speed, -max_speed, max_speed);
 
   motors.setSpeeds(-motor_speed, motor_speed);
-  if(abs(turn_error)<0.3 && turnRate < 5) {
+  if(abs(turn_error)<0.5 && turnRate < 10) {
     return true;
   }
   return false;
