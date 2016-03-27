@@ -15,3 +15,9 @@ I use odometry to track the position of the robot and then at the final stage, I
 
 <h2>follow_the_line</h2>
 A traditional line follower program that will follow a dark line on a light surface.
+
+<h2>zumo_clock</h2>
+This program makes the zumo robot rotate in place like the second hand of a clock.  It moves once second and uses the gyro to maintain position, so it will return to the correct position even if disturbed.
+
+<h2>zumo_compas</h2>
+Playing with the on-board compass.
