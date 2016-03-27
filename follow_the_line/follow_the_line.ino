@@ -11,7 +11,7 @@ Simple around the box program
 // This is the maximum speed the motors will be allowed to turn.
 // A maxSpeed of 400 lets the motors go at top speed.  Decrease
 // this value to impose a speed limit.
-const int16_t max_speed = 200;
+const int16_t max_speed = 400;
 
 Zumo32U4LCD lcd;
 Zumo32U4ButtonA buttonA;
@@ -90,7 +90,7 @@ bool turn_to_angle(float desired_degrees) {
   double turn_error = standardized_degrees(desired_degrees - turn_degrees);
   lcd.clear();
   lcd.print(turn_error);
-  int32_t motor_speed = turn_error * 20 - turn_degrees_per_second*0.5;
+  int32_t motor_speed = turn_error * 10 - turn_degrees_per_second*0.5;
 
   // Constrain our motor speeds to be between
   // -maxSpeed and maxSpeed.
@@ -104,9 +104,9 @@ bool turn_to_angle(float desired_degrees) {
   // enforce minimum motor speed
   if(abs(motor_speed) < 50 && abs(turnRate) < 10) {
     if(motor_speed < 0) 
-      motor_speed = -50;
+      motor_speed = -100;
     else
-      motor_speed = 50;
+      motor_speed = 100;
   }
   motors.setSpeeds(-motor_speed, motor_speed);
   return false;
@@ -139,11 +139,11 @@ void follow_line() {
   // 1000 is centor left sensor
   // 3000 is center right sensor
   // 0 means that it cannot determine reading
-  if(line_position == 0) {
+  if(line_position <1000 && line_position > 3000) {
     return;
   }
-  int left_speed = constrain(map(line_position,1000,3000,0,max_speed),0,max_speed);
-  int right_speed = constrain(map(line_position,1000,3000,max_speed,0),0,max_speed);
+  int left_speed = constrain(map(line_position,1500,2100,0,max_speed),0,max_speed);
+  int right_speed = constrain(map(line_position,2500, 1900,0,max_speed),0,max_speed);
   
   
   motors.setSpeeds(left_speed, right_speed);
