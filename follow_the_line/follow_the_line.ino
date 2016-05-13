@@ -206,15 +206,12 @@ bool move_to(double x, double y) {
 }
 
 void follow_line() {
-  // center of line is at 2000
-  // 1000 is centor left sensor
-  // 3000 is center right sensor
-  // 0 means that it cannot determine reading
+  // e returns -1.0 to +1.0 or NAN if no good reading could be made
   float e = get_line_error();
   // update course if e is not NAN
   if (e==e) {
-    int left_speed = constrain(map(1000*e,-1000,1000,0,max_speed),0,max_speed);
-    int right_speed = constrain(map(1000*e,1000,-1000,0,max_speed),0,max_speed);
+    int left_speed = constrain(map(1000*e,0,-1000,max_speed,-max_speed),-max_speed,max_speed);
+    int right_speed = constrain(map(1000*e,0,1000,max_speed,-max_speed),-max_speed,max_speed);
     motors.setSpeeds(left_speed, right_speed);
   }
 }
