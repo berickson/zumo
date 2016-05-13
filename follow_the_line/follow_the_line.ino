@@ -44,6 +44,77 @@ void setup() {
 
 
 
+float get_line_error() {
+  unsigned int v_on[5];
+  line_sensors.read(v_on,QTR_EMITTERS_ON);
+  float f[5] = {0.,0.,0.,0.,0.};
+  auto s = v_on;
+  // scale by sensitivity
+  f[1]=s[1]/140.;
+  f[2]=s[2]/108.;
+  f[3]=s[3]/140.;
+  
+  // take average
+  float avg = (float)(f[1]+f[2]+f[3])/3.;
+  f[1]/=avg;
+  f[2]/=avg;
+  f[3]/=avg;
+
+  // assign zero relative to lowest sensor
+  float low = min(min(f[1],f[2]),f[3]);
+  f[1]-=low;
+  f[2]-=low;
+  f[3]-=low;
+  f[1]=max(f[1],0.);
+  f[2]=max(f[2],0.);
+  f[3]=max(f[3],0.);
+
+  // interpret where line is -1 to 1
+  float error = NAN;
+
+  auto a = f[1];
+  auto b = f[2];
+  auto c = f[3];
+  // between left and middle
+  if(a < 0.2 && b > 0.2 && c < 0.2 ) {
+    error = 0;
+  }
+  // somewhere between -1. and -0.5
+  if(a > 0.2 && b < 0.20 && c <0.20) {
+    error = -0.5 + (-0.5 * max(1.2-a,0));
+  }
+
+  // somewhere between -0.5 and 0
+  if(a > 0.2 && b > 0.20) {
+    error = -0.5 * (a-0.2) / (a+b-0.4);
+  }
+  // somewhere between 0 and 0.5
+  if(b > 0.2 && c > 0.20) {
+    error = 0.5 * (c-0.2) / (c+b-0.4);
+  }
+  // somewhere between 0.5 and 1.
+  if(a < 0.2 && b < 0.20 && c >0.20) {
+    error = 0.5 + (0.5 * max(1.2-c,0));
+  }
+
+
+  #if 0
+    auto p = f;
+    lcd.clear();
+    lcd.gotoXY(0,0);
+    lcd.print(error);
+    lcd.print(',');
+    lcd.print(p[2]);
+    lcd.print("   ");
+    lcd.gotoXY(0,1);
+    lcd.print(p[1]);
+    lcd.print(',');
+    lcd.print(p[3]);
+  #endif
+  return error;
+}
+
+
 // returns true if loop time passes through n ms boundary
 bool every_n_ms(unsigned long last_loop_ms, unsigned long loop_ms, unsigned long ms) {
   return (last_loop_ms % ms) + (loop_ms - last_loop_ms) >= ms;
@@ -139,16 +210,13 @@ void follow_line() {
   // 1000 is centor left sensor
   // 3000 is center right sensor
   // 0 means that it cannot determine reading
-  if(line_position <1000 && line_position > 3000) {
-    return;
+  float e = get_line_error();
+  // update course if e is not NAN
+  if (e==e) {
+    int left_speed = constrain(map(1000*e,-1000,1000,0,max_speed),0,max_speed);
+    int right_speed = constrain(map(1000*e,1000,-1000,0,max_speed),0,max_speed);
+    motors.setSpeeds(left_speed, right_speed);
   }
-  int left_speed = constrain(map(line_position,1500,2100,0,max_speed),0,max_speed);
-  int right_speed = constrain(map(line_position,2500, 1900,0,max_speed),0,max_speed);
-  
-  
-  motors.setSpeeds(left_speed, right_speed);
-  
-  
 }
 
 void loop()
@@ -196,6 +264,7 @@ void loop()
       go_angle = 0;
       lcd.clear();
       ++current_step;
+      current_step = 7;
       break;
     case 1:
       lcd.print((String)"line cal");
