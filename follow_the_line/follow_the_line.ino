@@ -11,7 +11,7 @@ Simple around the box program
 // This is the maximum speed the motors will be allowed to turn.
 // A maxSpeed of 400 lets the motors go at top speed.  Decrease
 // this value to impose a speed limit.
-const int16_t max_speed = 400;
+const int16_t max_speed = 300;
 
 Zumo32U4LCD lcd;
 Zumo32U4ButtonA buttonA;
