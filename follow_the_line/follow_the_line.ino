@@ -1,5 +1,8 @@
 /*
-Simple around the box program
+simple line follower for zumo 32U4
+
+board - Leonardo
+libraries - Zume 32U4 v.1.1.3
 
 - Brian Erickson
 */
@@ -11,7 +14,7 @@ Simple around the box program
 // This is the maximum speed the motors will be allowed to turn.
 // A maxSpeed of 400 lets the motors go at top speed.  Decrease
 // this value to impose a speed limit.
-const int16_t max_speed = 300;
+const int16_t max_speed = 400;
 
 Zumo32U4LCD lcd;
 Zumo32U4ButtonA buttonA;
@@ -22,7 +25,7 @@ Zumo32U4ProximitySensors proximity_sensors;
 Zumo32U4LineSensors line_sensors;
 #define NUM_SENSORS 5
 uint16_t line_sensor_values[NUM_SENSORS];
-int line_position;
+float line_error;;
 
 
 struct Location {double x; double y;} location = {0.,0.};
@@ -111,6 +114,7 @@ float get_line_error() {
     lcd.print(',');
     lcd.print(p[3]);
   #endif
+  line_error = error; // global for trace
   return error;
 }
 
@@ -139,9 +143,10 @@ void show_stats_on_lcd() {
     */
     lcd.clear();
     lcd.gotoXY(0,0);
-    lcd.print((int)line_position);
+    lcd.print("line error");
     lcd.gotoXY(0,1);
-    lcd.print((int)line_sensor_values[2]);
+    lcd.print((int)100*line_error);
+    //lcd.print((int)line_sensor_values[2]);
 }
 
 
@@ -205,14 +210,39 @@ bool move_to(double x, double y) {
   return false;
 }
 
+float total_error = 0;
+unsigned long last_line_us = 0;
 void follow_line() {
   // e returns -1.0 to +1.0 or NAN if no good reading could be made
   float e = get_line_error();
+  unsigned long us = micros();
   // update course if e is not NAN
   if (e==e) {
-    int left_speed = constrain(map(1000*e,0,-1000,max_speed,-max_speed),-max_speed,max_speed);
-    int right_speed = constrain(map(1000*e,0,1000,max_speed,-max_speed),-max_speed,max_speed);
+    if(last_line_us > 0) {
+      float dt = (us - last_line_us) / 1E6;
+      total_error += e*dt;
+      total_error = constrain(total_error, -0.25, 0.25);
+    }
+    float ki = 0;// 800; // high since we are using error * seconds
+    float kd = 0.05;
+    float kp = 2.5 * max_speed;
+    float base_speed = max_speed*0.7;
+    
+    static float pid_output = 0;
+    float k_smooth = 0.0;
+    float pid_raw = kp * e + kd * turnRate + ki*total_error;
+    pid_output = k_smooth * pid_output + (1-k_smooth) * pid_raw;
+
+
+
+    int left_speed  = constrain(base_speed + pid_output,-max_speed, max_speed);
+    int right_speed = constrain(base_speed - pid_output,-max_speed, max_speed);
+
+    
+    //int left_speed = constrain(map(1000*e,0,-1000,max_speed,-max_speed),-max_speed,max_speed);
+    //int right_speed = constrain(map(1000*e,0,1000,max_speed,-max_speed),-max_speed,max_speed);
     motors.setSpeeds(left_speed, right_speed);
+    last_line_us = micros();
   }
 }
 
@@ -250,7 +280,7 @@ void loop()
   //bool last_box_to_right = box_to_right;
   //box_to_right = (proximity_sensors.countsRightWithRightLeds() > 3);
   
-  line_position = line_sensors.readLine(line_sensor_values);
+  //line_position = line_sensors.readLine(line_sensor_values);
   // try using only the three center sensors
   //line_position = (line_sensor_values[1]*1000+line_sensor_values[2]*2000+line_sensor_values[3]*3000)/(line_sensor_values[1]+line_sensor_values[2]+line_sensor_values[3]);
 
