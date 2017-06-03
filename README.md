@@ -14,10 +14,19 @@ I use the side proximity detectors to detect when the robot has gone past the ed
 I use odometry to track the position of the robot and then at the final stage, I have it return to its original position.
 
 <h2>follow_the_line</h2>
-A traditional line follower program that will follow a dark line on a light surface.
+A traditional line follower program that will follow a dark line on a light surface. It has a couple special features.  First, it uses some special interpolation to get the line position from the sensors, even though one of my sensors is dead. Second, it uses the gyroscope turn rate for the D term in the PID.
 
 [![Alt text](https://img.youtube.com/vi/TDYIutR5_Wo/0.jpg)](https://www.youtube.com/watch?v=TDYIutR5_Wo)<br/>
 https://www.youtube.com/watch?v=TDYIutR5_Wo
+
+I recently replaced the 4 aaa batteries with a two LiPo cells in series for a little more power.
+  
+[![Alt text](https://img.youtube.com/vi/uCljk0RsZZA/0.jpg)](https://www.youtube.com/watch?v=uCljk0RsZZA)<br/>
+https://www.youtube.com/watch?v=uCljk0RsZZA
+
+
+
+
 
 <h2>zumo_clock</h2>
 This program makes the zumo robot rotate in place like the second hand of a clock.  It moves once second and uses the gyro to maintain position, so it will return to the correct position even if disturbed.
